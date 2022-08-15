@@ -74,3 +74,28 @@ and performing clustering. This is similar to what was done in Sensor Fusion Lid
 This information is only accessible by people who are already enrolled in Sensor Fusion. 
 If you are enrolled, see the project page in the classroom
 for instructions and the project rubric.
+
+# Project Result
+
+## Meaning of colors and shaep
+* Green Car: Ego Vehicle
+* Blue Cars: Ground truth of Target vehicles
+* Red sphere: Lidar sensing Data (px, py)
+* Purple line/arrow: Radar Sensing data (Range, Angle, change rate of Range)
+* Green Sphere/arrow: UKF Result (px, py, velocity, yaw, yaw rate)
+
+## Kalman Filter with only LIDAR
+<img src = "image\KF_lidar only.gif" height ="200" >\
+RMSE Fail: Vx  
+reason: Lidar detect X, Y position, but hard to calculate exact velocity
+
+## Kalman Filter with only Radar
+<img src = "image\KF_radar only.gif" height ="200" >\
+RMSE Fail: Y, Vy  
+reason: Radar detect range, relative velocity with low resolution
+
+## Kalman Filter with Sensor Fusion (Radar and LIDAR)
+<img src = "image\KF_sensorFusion.gif" height ="200" >\
+Sensor fusion can compensate for weaknesses each sensors
+
+
