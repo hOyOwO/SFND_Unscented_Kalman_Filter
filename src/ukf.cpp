@@ -5,6 +5,7 @@
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
+
 /**
  * Initializes Unscented Kalman filter
  */
@@ -22,10 +23,10 @@ UKF::UKF() {
   P_ = MatrixXd(5, 5);
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 30;
+  std_a_ = 1.0;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
-  std_yawdd_ = 30;
+  std_yawdd_ = 0.8;
   
   /**
    * DO NOT MODIFY measurement noise values below.
@@ -84,8 +85,6 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
       px = meas_package.raw_measurements_[0];
       py = meas_package.raw_measurements_[1];
       //std::cout << "px py" << px << " " << py << std::endl;
-      x_(0) = px;
-      x_(1) = py;
     }
     else if (meas_package.sensor_type_ == MeasurementPackage::RADAR)
     {
@@ -136,7 +135,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
 }
 
 void UKF::Prediction(double delta_t) {
-  /**
+  /*
    * TODO: Complete this function! Estimate the object's location. 
    * Modify the state vector, x_. Predict sigma points, the state, 
    * and the state covariance matrix.
@@ -149,6 +148,7 @@ MatrixXd P_aug_ = MatrixXd(n_aug_, n_aug_);
 MatrixXd Xsig_aug_ = MatrixXd(n_aug_, 2*n_aug_ +1);
 
 //create augmented covariance matrix
+x_aug_.fill(0.0);
 x_aug_.head(5) = x_;
 x_aug_(5) = 0;
 x_aug_(6) = 0;
@@ -159,15 +159,18 @@ P_aug_.topLeftCorner(5,5) = P_;
 P_aug_(5,5) = std_a_ * std_a_;
 P_aug_(6,6) = std_yawdd_* std_yawdd_;
 
-MatrixXd L = P_aug_.llt().matrixL();
+MatrixXd L = P_aug_.llt().matrixL(); //create squre root matrix
 
 //1. create augmented sigma points
+Xsig_aug_.fill(0.0);
 Xsig_aug_.col(0) = x_aug_;
 for (int i = 0; i < n_aug_; ++i)
 {
   Xsig_aug_.col(i+1)          = x_aug_ + sqrt(lambda_ + n_aug_) * L.col(i);
   Xsig_aug_.col(i+1 + n_aug_) = x_aug_ - sqrt(lambda_ + n_aug_) * L.col(i);
 }
+//std::cout << "Xsig_aug_" << std::endl;
+//std::cout << Xsig_aug_ << std::endl;
 Xsig_pred_.fill(0.0);
 //create matrix with predicted sigma points as columns
 //2. predict sigma points
@@ -182,21 +185,25 @@ Xsig_pred_.fill(0.0);
     double nu_yawdd = Xsig_aug_(6,i);
 
     //predicted state values
-    double px_p, py_p;
-    double v_p = v;
-    double yaw_p = yaw+ yaw*delta_t;
-    double yawd_p = yawd;
+    double px_p =0, py_p=0;
 
     //avoid division by zero
     if(fabs(yawd) > 0.001){
-      px_p = p_x + v/yawd * (sin(yaw + yaw*delta_t) - sin(yaw));
-      py_p = p_y + v/yawd * (cos(yaw) - cos(yaw+yaw*delta_t));
+      px_p = p_x + v/yawd * (sin(yaw + yawd*delta_t) - sin(yaw));
+      py_p = p_y + v/yawd * (cos(yaw) - cos(yaw+yawd*delta_t));
 
     }
     else{
       px_p = p_x + v*delta_t*cos(yaw);
       py_p = p_y + v*delta_t*sin(yaw);
     }
+
+    double v_p = v;
+    double yaw_p = yaw+ yawd*delta_t;
+    double yawd_p = yawd;
+
+
+
     //add noise
     px_p = px_p + 0.5 * delta_t * delta_t * cos(yaw) * nu_a;
     py_p = py_p + 0.5 * delta_t * delta_t * sin(yaw) * nu_a;
@@ -219,7 +226,7 @@ Xsig_pred_.fill(0.0);
     weights_(i) = 0.5 / (n_aug_ + lambda_);
   }
   x_.fill(0.0);
-  //predicted mean
+  //predicted state mean
   for (int i = 0; i < 2*n_aug_+1; ++i){
     x_ += weights_(i) * Xsig_pred_.col(i);
   }
@@ -234,6 +241,11 @@ Xsig_pred_.fill(0.0);
     P_ = P_ + weights_(i) * x_diff * x_diff.transpose();
 
   }
+  std::cout << "predicted state" << std::endl;
+  std::cout << x_ << std::endl;
+  std::cout << "Predicted covariance matrix " << std::endl;
+  std::cout << P_ <<std::endl;
+
   
 
 
@@ -354,7 +366,7 @@ weights_(0) = lambda_ / (lambda_ + n_aug_);
   MatrixXd K = MatrixXd(n_x_, n_z);
   K = Tc*S.inverse();
 
-  VectorXd z_diff = z - z_pred;
+  VectorXd z_diff = meas_package.raw_measurements_ - z_pred;
   while (z_diff(1) > M_PI) z_diff(1)-=2.*M_PI;
   while (z_diff(1) < -M_PI) z_diff(1) += 2.*M_PI;
 
